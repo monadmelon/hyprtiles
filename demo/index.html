@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HyprTiles - Kerala Maps</title>
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: #1C1C1E;
+        }
+        
+        #map { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+        }
+        
+        .controls {
+            position: absolute; 
+            top: 20px; left: 20px; 
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            min-width: 220px;
+        }
+        
+        .dark .panel {
+            background: rgba(44, 44, 46, 0.95);
+            color: #fff;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        
+        h1 { 
+            font-size: 20px; 
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .dark h1 {
+            background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+        
+        .subtitle { 
+            font-size: 13px; 
+            color: #666; 
+            margin-bottom: 16px; 
+        }
+        
+        .dark .subtitle { color: #aaa; }
+        
+        .theme-toggle {
+            display: flex;
+            gap: 8px;
+            background: #f0f0f0;
+            padding: 4px;
+            border-radius: 12px;
+        }
+        
+        .dark .theme-toggle {
+            background: #3a3a3c;
+        }
+        
+        .theme-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: transparent;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .dark .theme-btn {
+            color: #aaa;
+        }
+        
+        .theme-btn.active {
+            background: #fff;
+            color: #333;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .dark .theme-btn.active {
+            background: #5a5a5c;
+            color: #fff;
+        }
+        
+        .theme-btn:hover:not(.active) {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        
+        .dark .theme-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-panel {
+            font-size: 13px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        
+        .dark .info-row {
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-row:last-child { border: none; }
+        
+        .info-label { color: #888; }
+        .info-value { font-weight: 600; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; }
+        
+        .marker {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+            border: 3px solid #fff;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .marker:hover {
+            transform: rotate(-45deg) scale(1.1);
+        }
+        
+        .marker-inner {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(45deg);
+            font-size: 18px;
+        }
+        
+        .maplibregl-popup-content {
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+        }
+        
+        .popup-title {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        
+        .popup-desc {
+            color: #666;
+            font-size: 13px;
+        }
+        
+        .places-panel {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .place-btn {
+            width: 100%;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            background: transparent;
+            color: inherit;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .place-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .dark .place-btn:hover {
+            background: rgba(167, 139, 250, 0.2);
+        }
+        
+        .place-icon {
+            font-size: 16px;
+        }
+
+        /* Custom zoom controls styling */
+        .maplibregl-ctrl-group {
+            border-radius: 12px !important;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+        }
+        
+        .maplibregl-ctrl-group button {
+            width: 40px !important;
+            height: 40px !important;
+        }
+    </style>
+</head>
+<body class="dark">
+    <div id="map"></div>
+    
+    <div class="controls">
+        <div class="panel">
+            <div class="logo">
+                <div class="logo-icon">🗺️</div>
+                <h1>HyprTiles</h1>
+            </div>
+            <p class="subtitle">Self-hosted Kerala maps</p>
+            
+            <div class="theme-toggle">
+                <button class="theme-btn" onclick="setTheme('light')">
+                    ☀️ Light
+                </button>
+                <button class="theme-btn active" onclick="setTheme('dark')">
+                    🌙 Dark
+                </button>
+            </div>
+        </div>
+
+        <div class="panel info-panel">
+            <div class="info-row">
+                <span class="info-label">Zoom</span>
+                <span class="info-value" id="zoom">8.0</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Center</span>
+                <span class="info-value" id="center">10.85°N, 76.27°E</span>
+            </div>
+        </div>
+        
+        <div class="panel places-panel">
+            <button class="place-btn" onclick="flyTo([76.9366, 8.5241], 12, 'Thiruvananthapuram')">
+                <span class="place-icon">🏛️</span> Thiruvananthapuram
+            </button>
+            <button class="place-btn" onclick="flyTo([76.2673, 9.9312], 12, 'Kochi')">
+                <span class="place-icon">⚓</span> Kochi
+            </button>
+            <button class="place-btn" onclick="flyTo([75.7804, 11.2588], 12, 'Kozhikode')">
+                <span class="place-icon">🌴</span> Kozhikode
+            </button>
+            <button class="place-btn" onclick="flyTo([76.7156, 8.7379], 14, 'Varkala Beach')">
+                <span class="place-icon">🏖️</span> Varkala Beach
+            </button>
+            <button class="place-btn" onclick="flyTo([77.0609, 10.7867], 13, 'Munnar')">
+                <span class="place-icon">🌄</span> Munnar
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const TILE_SERVER = 'http://localhost:3000';
+        let map, currentTheme = 'dark';
+        let markers = [];
+
+        // Apple Maps-inspired colors
+        const themes = {
+            light: {
+                background: '#F2EFE9',
+                landuse: '#E8E4DD',
+                water: '#B3D1E6',
+                waterway: '#9EC5DB',
+                park: '#C5DEB8',
+                forest: '#C8DBC0',
+                sand: '#F5E6D3',
+                building: '#DDD9D2',
+                buildingOutline: '#C5C0B8',
+                roadMotorway: '#FDB913',
+                roadMotorwayCasing: '#E5A600',
+                roadPrimary: '#FFFFFF',
+                roadPrimaryCasing: '#D4D0C8',
+                roadSecondary: '#FFFFFF',
+                roadSecondaryCasing: '#E0DCD4',
+                roadMinor: '#FFFFFF',
+                roadMinorCasing: '#E8E4DC',
+                textPrimary: '#333333',
+                textSecondary: '#666666',
+                textHalo: '#FFFFFF'
+            },
+            dark: {
+                background: '#1C1C1E',
+                landuse: '#252528',
+                water: '#1A3D4D',
+                waterway: '#1A3D4D',
+                park: '#1E3A1E',
+                forest: '#1A2E1A',
+                sand: '#3D3529',
+                building: '#2C2C2E',
+                buildingOutline: '#3A3A3C',
+                roadMotorway: '#C4940F',
+                roadMotorwayCasing: '#1C1C1E',
+                roadPrimary: '#4A4A4C',
+                roadPrimaryCasing: '#1C1C1E',
+                roadSecondary: '#3A3A3C',
+                roadSecondaryCasing: '#1C1C1E',
+                roadMinor: '#333335',
+                roadMinorCasing: '#1C1C1E',
+                textPrimary: '#E0E0E0',
+                textSecondary: '#A0A0A0',
+                textHalo: '#1C1C1E'
+            }
+        };
+
+        function getStyle(theme) {
+            const c = themes[theme];
+            
+            return {
+                version: 8,
+                name: `HyprTiles ${theme}`,
+                sources: {
+                    kerala: {
+                        type: 'vector',
+                        tiles: [`${TILE_SERVER}/kerala/{z}/{x}/{y}`],
+                        maxzoom: 14
+                    }
+                },
+                glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
+                layers: [
+                    // Background
+                    {
+                        id: 'background',
+                        type: 'background',
+                        paint: { 'background-color': c.background }
+                    },
+                    
+                    // Landuse areas
+                    {
+                        id: 'landuse',
+                        type: 'fill',
+                        source: 'kerala',
+                        'source-layer': 'landuse',
+                        paint: {
+                            'fill-color': [
+                                'match', ['get', 'class'],
+                                'residential', c.landuse,
+                                'commercial', c.landuse,
+                                'industrial', c.landuse,
+                                'cemetery', c.park,
+                                'hospital', c.landuse,
+                                'school', c.landuse,
+                                'stadium', c.park,
+                                c.landuse
+                            ],
+                            'fill-opacity': 0.7
+                        }
+                    },
+                    
+                    // Landcover (forests, grass, etc)
+                    {
+                        id: 'landcover-grass',
+                        type: 'fill',
+                        source: 'kerala',
+                        'source-layer': 'landcover',
+                        filter: ['==', 'class', 'grass'],
+                        paint: { 'fill-color': c.park, 'fill-opacity': 0.6 }
+                    },
+                    {
+                        id: 'landcover-wood',
+                        type: 'fill',
+                        source: 'kerala',
+                        'source-layer': 'landcover',
+                        filter: ['in', 'class', 'wood', 'forest'],
+                        paint: { 'fill-color': c.forest, 'fill-opacity': 0.7 }
+                    },
+                    {
+                        id: 'landcover-sand',
+                        type: 'fill',
+                        source: 'kerala',
+                        'source-layer': 'landcover',
+                        filter: ['==', 'class', 'sand'],
+                        paint: { 'fill-color': c.sand }
+                    },
+                    
+                    // Parks
+                    {
+                        id: 'park',
+                        type: 'fill',
+                        source: 'kerala',
+                        'source-layer': 'park',
+                        paint: { 'fill-color': c.park, 'fill-opacity': 0.6 }
+                    },
+                    
+                    // Water
+                    {
+                        id: 'water',
+                        type: 'fill',
+                        source: 'kerala',
+                        'source-layer': 'water',
+                        paint: { 'fill-color': c.water }
+                    },
+                    
+                    // Waterways
+                    {
+                        id: 'waterway',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'waterway',
+                        paint: {
+                            'line-color': c.waterway,
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 14, 4]
+                        }
+                    },
+                    
+                    // Buildings
+                    {
+                        id: 'building',
+                        type: 'fill',
+                        source: 'kerala',
+                        'source-layer': 'building',
+                        minzoom: 13,
+                        paint: {
+                            'fill-color': c.building,
+                            'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.3, 16, 0.9]
+                        }
+                    },
+                    {
+                        id: 'building-outline',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'building',
+                        minzoom: 14,
+                        paint: {
+                            'line-color': c.buildingOutline,
+                            'line-width': 0.5
+                        }
+                    },
+                    
+                    // Roads - casings first (bottom layer)
+                    {
+                        id: 'road-minor-casing',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'transportation',
+                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'minor', 'service', 'track']],
+                        minzoom: 12,
+                        layout: { 'line-cap': 'round', 'line-join': 'round' },
+                        paint: {
+                            'line-color': c.roadMinorCasing,
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 18, 20]
+                        }
+                    },
+                    {
+                        id: 'road-secondary-casing',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'transportation',
+                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'secondary', 'tertiary']],
+                        minzoom: 9,
+                        layout: { 'line-cap': 'round', 'line-join': 'round' },
+                        paint: {
+                            'line-color': c.roadSecondaryCasing,
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 3, 18, 28]
+                        }
+                    },
+                    {
+                        id: 'road-primary-casing',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'transportation',
+                        filter: ['all', ['==', '$type', 'LineString'], ['==', 'class', 'primary']],
+                        minzoom: 7,
+                        layout: { 'line-cap': 'round', 'line-join': 'round' },
+                        paint: {
+                            'line-color': c.roadPrimaryCasing,
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 7, 3, 18, 32]
+                        }
+                    },
+                    {
+                        id: 'road-motorway-casing',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'transportation',
+                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'motorway', 'trunk']],
+                        minzoom: 5,
+                        layout: { 'line-cap': 'round', 'line-join': 'round' },
+                        paint: {
+                            'line-color': c.roadMotorwayCasing,
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 5, 2, 18, 36]
+                        }
+                    },
+                    
+                    // Roads - fills
+                    {
+                        id: 'road-minor',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'transportation',
+                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'minor', 'service', 'track']],
+                        minzoom: 12,
+                        layout: { 'line-cap': 'round', 'line-join': 'round' },
+                        paint: {
+                            'line-color': c.roadMinor,
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1.5, 18, 16]
+                        }
+                    },
+                    {
+                        id: 'road-secondary',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'transportation',
+                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'secondary', 'tertiary']],
+                        minzoom: 9,
+                        layout: { 'line-cap': 'round', 'line-join': 'round' },
+                        paint: {
+                            'line-color': c.roadSecondary,
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.5, 18, 24]
+                        }
+                    },
+                    {
+                        id: 'road-primary',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'transportation',
+                        filter: ['all', ['==', '$type', 'LineString'], ['==', 'class', 'primary']],
+                        minzoom: 7,
+                        layout: { 'line-cap': 'round', 'line-join': 'round' },
+                        paint: {
+                            'line-color': c.roadPrimary,
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1.5, 18, 28]
+                        }
+                    },
+                    {
+                        id: 'road-motorway',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'transportation',
+                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'motorway', 'trunk']],
+                        minzoom: 5,
+                        layout: { 'line-cap': 'round', 'line-join': 'round' },
+                        paint: {
+                            'line-color': c.roadMotorway,
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1, 18, 32]
+                        }
+                    },
+                    
+                    // Place labels
+                    {
+                        id: 'place-city',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'place',
+                        filter: ['==', 'class', 'city'],
+                        minzoom: 5,
+                        layout: {
+                            'text-field': '{name}',
+                            'text-font': ['Open Sans Bold'],
+                            'text-size': ['interpolate', ['linear'], ['zoom'], 5, 14, 12, 24],
+                            'text-transform': 'uppercase',
+                            'text-letter-spacing': 0.1
+                        },
+                        paint: {
+                            'text-color': c.textPrimary,
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 2
+                        }
+                    },
+                    {
+                        id: 'place-town',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'place',
+                        filter: ['==', 'class', 'town'],
+                        minzoom: 8,
+                        layout: {
+                            'text-field': '{name}',
+                            'text-font': ['Open Sans Bold'],
+                            'text-size': ['interpolate', ['linear'], ['zoom'], 8, 12, 14, 18]
+                        },
+                        paint: {
+                            'text-color': c.textPrimary,
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1.5
+                        }
+                    },
+                    {
+                        id: 'place-village',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'place',
+                        filter: ['in', 'class', 'village', 'hamlet', 'suburb', 'neighbourhood'],
+                        minzoom: 11,
+                        layout: {
+                            'text-field': '{name}',
+                            'text-font': ['Open Sans Regular'],
+                            'text-size': ['interpolate', ['linear'], ['zoom'], 11, 10, 16, 14]
+                        },
+                        paint: {
+                            'text-color': c.textSecondary,
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1
+                        }
+                    },
+                    
+                    // Road labels
+                    {
+                        id: 'road-label',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'transportation_name',
+                        minzoom: 13,
+                        layout: {
+                            'text-field': '{name}',
+                            'text-font': ['Open Sans Regular'],
+                            'text-size': 11,
+                            'symbol-placement': 'line',
+                            'text-max-angle': 30
+                        },
+                        paint: {
+                            'text-color': c.textSecondary,
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1.5
+                        }
+                    },
+                    
+                    // Aeroways (runways, taxiways)
+                    {
+                        id: 'aeroway-runway',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'aeroway',
+                        filter: ['==', 'class', 'runway'],
+                        minzoom: 11,
+                        paint: {
+                            'line-color': theme === 'light' ? '#BBBBBB' : '#4A4A4C',
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 3, 16, 20]
+                        }
+                    },
+                    {
+                        id: 'aeroway-taxiway',
+                        type: 'line',
+                        source: 'kerala',
+                        'source-layer': 'aeroway',
+                        filter: ['==', 'class', 'taxiway'],
+                        minzoom: 12,
+                        paint: {
+                            'line-color': theme === 'light' ? '#CCCCCC' : '#3A3A3C',
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 16, 8]
+                        }
+                    },
+                    
+                    // Airport labels
+                    {
+                        id: 'aerodrome-label',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'aerodrome_label',
+                        minzoom: 10,
+                        layout: {
+                            'text-field': ['concat', '✈️ ', ['get', 'name:latin']],
+                            'text-font': ['Open Sans Bold'],
+                            'text-size': ['interpolate', ['linear'], ['zoom'], 10, 11, 14, 14],
+                            'text-anchor': 'center',
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': theme === 'light' ? '#0066CC' : '#66B2FF',
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 2
+                        }
+                    },
+                    
+                    // Mountain peaks
+                    {
+                        id: 'mountain-peak',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'mountain_peak',
+                        minzoom: 11,
+                        layout: {
+                            'text-field': ['concat', '⛰️ ', ['get', 'name:latin'], '\n', ['to-string', ['get', 'ele']], 'm'],
+                            'text-font': ['Open Sans Regular'],
+                            'text-size': 11,
+                            'text-anchor': 'center',
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': theme === 'light' ? '#8B4513' : '#CD853F',
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1.5
+                        }
+                    },
+                    
+                    // POI - Hospitals
+                    {
+                        id: 'poi-hospital',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'poi',
+                        filter: ['==', 'class', 'hospital'],
+                        minzoom: 13,
+                        layout: {
+                            'text-field': ['concat', '🏥 ', ['get', 'name:latin']],
+                            'text-font': ['Open Sans Regular'],
+                            'text-size': 11,
+                            'text-anchor': 'left',
+                            'text-offset': [0.5, 0],
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': theme === 'light' ? '#CC0000' : '#FF6666',
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1.5
+                        }
+                    },
+                    
+                    // POI - Schools/Colleges
+                    {
+                        id: 'poi-school',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'poi',
+                        filter: ['in', 'class', 'school', 'college', 'university'],
+                        minzoom: 14,
+                        layout: {
+                            'text-field': ['concat', '🎓 ', ['get', 'name:latin']],
+                            'text-font': ['Open Sans Regular'],
+                            'text-size': 10,
+                            'text-anchor': 'left',
+                            'text-offset': [0.5, 0],
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': theme === 'light' ? '#6B4C9A' : '#A78BFA',
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1.5
+                        }
+                    },
+                    
+                    // POI - Places of worship
+                    {
+                        id: 'poi-worship',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'poi',
+                        filter: ['in', 'class', 'place_of_worship'],
+                        minzoom: 14,
+                        layout: {
+                            'text-field': ['concat', 
+                                ['match', ['get', 'subclass'],
+                                    'hindu', '🛕',
+                                    'christian', '⛪',
+                                    'muslim', '🕌',
+                                    'buddhist', '🛕',
+                                    '🙏'
+                                ],
+                                ' ', ['get', 'name:latin']
+                            ],
+                            'text-font': ['Open Sans Regular'],
+                            'text-size': 10,
+                            'text-anchor': 'left',
+                            'text-offset': [0.5, 0],
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': theme === 'light' ? '#996633' : '#DEB887',
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1.5
+                        }
+                    },
+                    
+                    // POI - Shopping
+                    {
+                        id: 'poi-shop',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'poi',
+                        filter: ['in', 'class', 'shop', 'grocery'],
+                        minzoom: 14,
+                        layout: {
+                            'text-field': ['concat', '🛒 ', ['get', 'name:latin']],
+                            'text-font': ['Open Sans Regular'],
+                            'text-size': 10,
+                            'text-anchor': 'left',
+                            'text-offset': [0.5, 0],
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': c.textSecondary,
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1
+                        }
+                    },
+                    
+                    // POI - Fuel/Petrol stations
+                    {
+                        id: 'poi-fuel',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'poi',
+                        filter: ['==', 'class', 'fuel'],
+                        minzoom: 14,
+                        layout: {
+                            'text-field': '⛽',
+                            'text-size': 14,
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': theme === 'light' ? '#FF6600' : '#FF9933'
+                        }
+                    },
+                    
+                    // POI - Banks/ATMs
+                    {
+                        id: 'poi-bank',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'poi',
+                        filter: ['in', 'class', 'bank', 'atm'],
+                        minzoom: 14,
+                        layout: {
+                            'text-field': ['concat', '🏦 ', ['get', 'name:latin']],
+                            'text-font': ['Open Sans Regular'],
+                            'text-size': 10,
+                            'text-anchor': 'left',
+                            'text-offset': [0.5, 0],
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': theme === 'light' ? '#006633' : '#66CC99',
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1
+                        }
+                    },
+                    
+                    // POI - Hotels/Lodging
+                    {
+                        id: 'poi-lodging',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'poi',
+                        filter: ['in', 'class', 'lodging', 'hotel'],
+                        minzoom: 13,
+                        layout: {
+                            'text-field': ['concat', '🏨 ', ['get', 'name:latin']],
+                            'text-font': ['Open Sans Regular'],
+                            'text-size': 11,
+                            'text-anchor': 'left',
+                            'text-offset': [0.5, 0],
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': theme === 'light' ? '#0066CC' : '#66B2FF',
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1.5
+                        }
+                    },
+                    
+                    // POI - Restaurants/Food
+                    {
+                        id: 'poi-restaurant',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'poi',
+                        filter: ['in', 'class', 'restaurant', 'fast_food', 'cafe'],
+                        minzoom: 14,
+                        layout: {
+                            'text-field': ['concat', 
+                                ['match', ['get', 'class'],
+                                    'restaurant', '🍽️',
+                                    'fast_food', '🍔',
+                                    'cafe', '☕',
+                                    '🍴'
+                                ],
+                                ' ', ['get', 'name:latin']
+                            ],
+                            'text-font': ['Open Sans Regular'],
+                            'text-size': 10,
+                            'text-anchor': 'left',
+                            'text-offset': [0.5, 0],
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': theme === 'light' ? '#CC6600' : '#FFAA66',
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1
+                        }
+                    },
+                    
+                    // POI - Parks/Recreation
+                    {
+                        id: 'poi-park',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'poi',
+                        filter: ['in', 'class', 'park', 'garden', 'sports_centre', 'stadium'],
+                        minzoom: 13,
+                        layout: {
+                            'text-field': ['concat', '🌳 ', ['get', 'name:latin']],
+                            'text-font': ['Open Sans Regular'],
+                            'text-size': 11,
+                            'text-anchor': 'left',
+                            'text-offset': [0.5, 0],
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': theme === 'light' ? '#228B22' : '#90EE90',
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 1.5
+                        }
+                    },
+                    
+                    // POI - Bus/Railway stations
+                    {
+                        id: 'poi-transport',
+                        type: 'symbol',
+                        source: 'kerala',
+                        'source-layer': 'poi',
+                        filter: ['in', 'class', 'bus_station', 'railway'],
+                        minzoom: 12,
+                        layout: {
+                            'text-field': ['concat',
+                                ['match', ['get', 'class'],
+                                    'bus_station', '🚌',
+                                    'railway', '🚂',
+                                    '🚏'
+                                ],
+                                ' ', ['get', 'name:latin']
+                            ],
+                            'text-font': ['Open Sans Bold'],
+                            'text-size': 12,
+                            'text-anchor': 'left',
+                            'text-offset': [0.5, 0],
+                            'text-allow-overlap': false
+                        },
+                        paint: {
+                            'text-color': theme === 'light' ? '#333333' : '#E0E0E0',
+                            'text-halo-color': c.textHalo,
+                            'text-halo-width': 2
+                        }
+                    }
+                ]
+            };
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            document.body.classList.toggle('dark', theme === 'dark');
+            
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (map) {
+                const center = map.getCenter();
+                const zoom = map.getZoom();
+                map.setStyle(getStyle(theme));
+                map.once('styledata', () => {
+                    map.setCenter(center);
+                    map.setZoom(zoom);
+                });
+            }
+        }
+
+        function flyTo(coords, zoom, name) {
+            map.flyTo({
+                center: coords,
+                zoom: zoom,
+                duration: 2000,
+                essential: true
+            });
+            
+            // Clear existing markers
+            markers.forEach(m => m.remove());
+            markers = [];
+            
+            // Add marker
+            const el = document.createElement('div');
+            el.className = 'marker';
+            el.innerHTML = '<div class="marker-inner">📍</div>';
+            
+            const marker = new maplibregl.Marker({ element: el })
+                .setLngLat(coords)
+                .setPopup(new maplibregl.Popup({ offset: 25 })
+                    .setHTML(`<div class="popup-title">${name}</div><div class="popup-desc">Kerala, India</div>`))
+                .addTo(map);
+            
+            markers.push(marker);
+            
+            setTimeout(() => marker.togglePopup(), 2100);
+        }
+
+        function updateInfo() {
+            if (!map) return;
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+            
+            document.getElementById('zoom').textContent = zoom.toFixed(1);
+            document.getElementById('center').textContent = 
+                `${center.lat.toFixed(2)}°N, ${center.lng.toFixed(2)}°E`;
+        }
+
+        // Initialize map
+        map = new maplibregl.Map({
+            container: 'map',
+            style: getStyle('dark'),
+            center: [76.2711, 10.8505], // Kerala center
+            zoom: 8,
+            maxBounds: [[73.5, 7.0], [80.5, 15.0]] // Limit panning
+        });
+
+        map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+        map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left');
+
+        map.on('move', updateInfo);
+        map.on('zoom', updateInfo);
+        map.on('load', updateInfo);
+    </script>
+</body>
+</html>

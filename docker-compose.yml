@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  martin:
+    image: ghcr.io/maplibre/martin:latest
+    container_name: hyprtiles-martin
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./tiles:/tiles:ro
+      - ./styles:/styles:ro
+    command: /tiles/kerala.mbtiles
