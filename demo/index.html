@@ -2,452 +2,768 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>HyprTiles</title>
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
     <style>
+        :root {
+            --sf-pro: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+        }
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
-            background: #1C1C1E;
+        html, body { 
+            height: 100%;
+            font-family: var(--sf-pro);
+            background: #000;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
         }
         
         #map { 
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
+            position: fixed;
+            inset: 0;
         }
         
-        .controls {
-            position: absolute; 
-            top: 16px; left: 16px; 
+        /* Floating controls - Apple style */
+        .float-btn {
+            position: fixed;
+            z-index: 1000;
+            width: 44px;
+            height: 44px;
+            border-radius: 22px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .float-btn:active {
+            transform: scale(0.94);
+        }
+        
+        .float-btn.light {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+            color: #1C1C1E;
+        }
+        
+        .float-btn.dark {
+            background: rgba(58, 58, 60, 0.95);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+            color: #FFF;
+        }
+        
+        .float-btn:hover {
+            transform: scale(1.04);
+        }
+        
+        /* Theme toggle */
+        #theme-toggle { top: 20px; right: 20px; }
+        
+        /* Terrain toggle */
+        #terrain-toggle { top: 74px; right: 20px; }
+        
+        /* Location stack */
+        .location-stack {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
             z-index: 1000;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 1px;
+            border-radius: 12px;
+            overflow: hidden;
         }
         
-        .panel {
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(24px) saturate(180%);
-            -webkit-backdrop-filter: blur(24px) saturate(180%);
-            border-radius: 14px;
-            padding: 16px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.08);
-            min-width: 200px;
+        .location-stack.light {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
         
-        .dark .panel {
-            background: rgba(44, 44, 46, 0.92);
-            color: #fff;
+        .location-stack.dark {
+            background: rgba(58, 58, 60, 0.95);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
         }
         
-        .brand {
-            font-size: 17px;
-            font-weight: 600;
-            letter-spacing: -0.4px;
-            margin-bottom: 2px;
-        }
-        
-        .subtitle { 
-            font-size: 13px; 
-            color: rgba(0, 0, 0, 0.5);
-            letter-spacing: -0.1px;
-            margin-bottom: 14px;
-        }
-        
-        .dark .subtitle { color: rgba(255, 255, 255, 0.5); }
-        
-        .toggle-group {
-            display: flex;
-            background: rgba(0, 0, 0, 0.06);
-            padding: 2px;
-            border-radius: 9px;
-        }
-        
-        .dark .toggle-group {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .toggle-btn {
-            flex: 1;
-            padding: 8px 12px;
+        .loc-btn {
+            width: 44px;
+            height: 40px;
             border: none;
-            border-radius: 7px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.15s ease;
             background: transparent;
-            color: rgba(0, 0, 0, 0.5);
-            letter-spacing: -0.1px;
-        }
-        
-        .dark .toggle-btn {
-            color: rgba(255, 255, 255, 0.5);
-        }
-        
-        .toggle-btn.active {
-            background: #fff;
-            color: #000;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-        
-        .dark .toggle-btn.active {
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-        }
-        
-        .info-panel {
-            font-size: 12px;
-        }
-        
-        .info-row {
+            cursor: pointer;
+            font-size: 15px;
             display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.1s;
+            -webkit-tap-highlight-color: transparent;
         }
         
-        .info-label { 
-            color: rgba(0, 0, 0, 0.45);
+        .loc-btn.light { color: #007AFF; }
+        .loc-btn.dark { color: #0A84FF; }
+        
+        .loc-btn:active.light { background: rgba(0, 0, 0, 0.05); }
+        .loc-btn:active.dark { background: rgba(255, 255, 255, 0.1); }
+        
+        .loc-divider.light { height: 0.5px; background: rgba(0, 0, 0, 0.1); margin: 0 8px; }
+        .loc-divider.dark { height: 0.5px; background: rgba(255, 255, 255, 0.1); margin: 0 8px; }
+        
+        /* Search pill */
+        .search-pill {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 80px;
+            max-width: 360px;
+            z-index: 1000;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .search-pill.light {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        }
+        
+        .search-pill.dark {
+            background: rgba(44, 44, 46, 0.95);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: none;
+            background: transparent;
+            font-family: var(--sf-pro);
+            font-size: 17px;
             font-weight: 400;
+            outline: none;
         }
         
-        .dark .info-label { color: rgba(255, 255, 255, 0.45); }
+        .search-input.light { color: #1C1C1E; }
+        .search-input.light::placeholder { color: rgba(60, 60, 67, 0.5); }
+        .search-input.dark { color: #FFF; }
+        .search-input.dark::placeholder { color: rgba(235, 235, 245, 0.4); }
         
-        .info-value { 
-            font-weight: 500;
-            font-variant-numeric: tabular-nums;
-            font-feature-settings: "tnum";
-        }
-        
-        .places-panel {
-            max-height: 180px;
+        .quick-places {
+            display: none;
+            border-top: 0.5px solid;
+            max-height: 240px;
             overflow-y: auto;
         }
         
-        .place-btn {
-            width: 100%;
-            padding: 10px 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 400;
+        .quick-places.light { border-color: rgba(0, 0, 0, 0.1); }
+        .quick-places.dark { border-color: rgba(255, 255, 255, 0.1); }
+        
+        .quick-places.show { display: block; }
+        
+        .place-item {
+            padding: 12px 16px;
             cursor: pointer;
-            text-align: left;
-            background: transparent;
-            color: inherit;
-            transition: background 0.15s;
-            letter-spacing: -0.2px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.1s;
         }
         
-        .place-btn:hover {
-            background: rgba(0, 0, 0, 0.04);
+        .place-item:active.light { background: rgba(0, 0, 0, 0.04); }
+        .place-item:active.dark { background: rgba(255, 255, 255, 0.06); }
+        
+        .place-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
         }
         
-        .dark .place-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
+        .place-icon.light { background: rgba(0, 0, 0, 0.05); }
+        .place-icon.dark { background: rgba(255, 255, 255, 0.1); }
+        
+        .place-text {
+            flex: 1;
         }
         
-        .place-btn:active {
-            background: rgba(0, 0, 0, 0.08);
+        .place-name {
+            font-size: 15px;
+            font-weight: 500;
         }
         
-        .dark .place-btn:active {
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .maplibregl-ctrl-group {
-            border-radius: 10px !important;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
-            border: none !important;
+        .place-name.light { color: #1C1C1E; }
+        .place-name.dark { color: #FFF; }
+        
+        .place-sub {
+            font-size: 13px;
+            margin-top: 1px;
         }
         
-        .maplibregl-ctrl-group button {
-            width: 36px !important;
-            height: 36px !important;
-            border: none !important;
-        }
+        .place-sub.light { color: rgba(60, 60, 67, 0.6); }
+        .place-sub.dark { color: rgba(235, 235, 245, 0.5); }
         
-        .maplibregl-ctrl-attrib {
+        /* Hide default controls */
+        .maplibregl-ctrl-bottom-left,
+        .maplibregl-ctrl-bottom-right { display: none !important; }
+        
+        /* Attribution */
+        .attribution {
+            position: fixed;
+            bottom: 8px;
+            left: 8px;
             font-size: 10px;
-            background: rgba(255, 255, 255, 0.7) !important;
-            backdrop-filter: blur(8px);
+            z-index: 100;
         }
         
-        .dark .maplibregl-ctrl-attrib {
-            background: rgba(0, 0, 0, 0.5) !important;
-            color: rgba(255, 255, 255, 0.6);
+        .attribution.light { color: rgba(0, 0, 0, 0.4); }
+        .attribution.dark { color: rgba(255, 255, 255, 0.35); }
+        
+        /* Apple-style scale bar */
+        .scale-bar {
+            position: fixed;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         
-        .dark .maplibregl-ctrl-attrib a {
-            color: rgba(255, 255, 255, 0.6);
+        .scale-line {
+            height: 2px;
+            background: currentColor;
+            border-radius: 1px;
+            min-width: 50px;
         }
+        
+        .scale-text {
+            font-size: 11px;
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .scale-bar.light { color: rgba(0, 0, 0, 0.5); }
+        .scale-bar.dark { color: rgba(255, 255, 255, 0.45); }
     </style>
 </head>
-<body class="dark">
+<body>
     <div id="map"></div>
     
-    <div class="controls">
-        <div class="panel">
-            <div class="brand">HyprTiles</div>
-            <p class="subtitle">Kerala</p>
-            
-            <div class="toggle-group">
-                <button class="toggle-btn" onclick="setTheme('light')">Light</button>
-                <button class="toggle-btn active" onclick="setTheme('dark')">Dark</button>
+    <div class="search-pill dark" id="search-pill">
+        <input type="text" class="search-input dark" id="search-input" placeholder="Search Maps" 
+               onfocus="showPlaces()" onblur="setTimeout(hidePlaces, 200)">
+        <div class="quick-places dark" id="quick-places">
+            <div class="place-item dark" onclick="goTo([76.9366, 8.5241], 14, 'Thiruvananthapuram')">
+                <div class="place-icon dark">TVM</div>
+                <div class="place-text">
+                    <div class="place-name dark">Thiruvananthapuram</div>
+                    <div class="place-sub dark">State Capital</div>
+                </div>
+            </div>
+            <div class="place-item dark" onclick="goTo([76.2673, 9.9312], 14, 'Kochi')">
+                <div class="place-icon dark">KOC</div>
+                <div class="place-text">
+                    <div class="place-name dark">Kochi</div>
+                    <div class="place-sub dark">Port City</div>
+                </div>
+            </div>
+            <div class="place-item dark" onclick="goTo([75.7804, 11.2588], 14, 'Kozhikode')">
+                <div class="place-icon dark">CLT</div>
+                <div class="place-text">
+                    <div class="place-name dark">Kozhikode</div>
+                    <div class="place-sub dark">City of Spices</div>
+                </div>
+            </div>
+            <div class="place-item dark" onclick="goTo([76.7156, 8.7379], 16, 'Varkala')">
+                <div class="place-icon dark">VRK</div>
+                <div class="place-text">
+                    <div class="place-name dark">Varkala</div>
+                    <div class="place-sub dark">Cliff Beach</div>
+                </div>
+            </div>
+            <div class="place-item dark" onclick="goTo([77.0609, 10.7867], 13, 'Munnar')">
+                <div class="place-icon dark">MNR</div>
+                <div class="place-text">
+                    <div class="place-name dark">Munnar</div>
+                    <div class="place-sub dark">Hill Station</div>
+                </div>
             </div>
         </div>
-
-        <div class="panel info-panel">
-            <div class="info-row">
-                <span class="info-label">Zoom</span>
-                <span class="info-value" id="zoom">8.0</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Center</span>
-                <span class="info-value" id="center">10.85, 76.27</span>
-            </div>
-        </div>
-        
-        <div class="panel places-panel">
-            <button class="place-btn" onclick="flyTo([76.9366, 8.5241], 13)">Thiruvananthapuram</button>
-            <button class="place-btn" onclick="flyTo([76.2673, 9.9312], 13)">Kochi</button>
-            <button class="place-btn" onclick="flyTo([75.7804, 11.2588], 13)">Kozhikode</button>
-            <button class="place-btn" onclick="flyTo([76.7156, 8.7379], 15)">Varkala</button>
-            <button class="place-btn" onclick="flyTo([77.0609, 10.7867], 13)">Munnar</button>
-        </div>
+    </div>
+    
+    <button class="float-btn dark" id="theme-toggle" onclick="toggleTheme()">
+        <span id="theme-icon">☀</span>
+    </button>
+    
+    <button class="float-btn dark" id="terrain-toggle" onclick="toggleTerrain()">
+        <span id="terrain-icon">▲</span>
+    </button>
+    
+    <div class="location-stack dark" id="location-stack">
+        <button class="loc-btn dark" onclick="zoomIn()">+</button>
+        <div class="loc-divider dark"></div>
+        <button class="loc-btn dark" onclick="zoomOut()">−</button>
+    </div>
+    
+    <div class="attribution dark" id="attribution">HyprMaps</div>
+    
+    <div class="scale-bar dark" id="scale-bar">
+        <div class="scale-line" id="scale-line"></div>
+        <span class="scale-text" id="scale-text">100 m</span>
     </div>
 
     <script>
         const TILE_SERVER = 'http://localhost:3000';
-        let map, currentTheme = 'dark';
+        let map, theme = 'dark', terrainOn = false;
 
-        const themes = {
+        // Apple Maps exact colors (sampled from actual Apple Maps)
+        const colors = {
             light: {
-                background: '#EAE6E1',
-                landuse: '#E2DED8',
-                water: '#A0C4E1',
-                waterway: '#A0C4E1',
-                park: '#C2D9B5',
-                forest: '#C8D9C0',
-                sand: '#F0E4D4',
-                building: '#D8D4CE',
-                buildingOutline: '#C8C4BE',
-                roadMotorway: '#F5B83D',
-                roadMotorwayCasing: '#E5A020',
-                roadPrimary: '#FFFFFF',
-                roadPrimaryCasing: '#D0CCC4',
-                roadSecondary: '#FFFFFF',
-                roadSecondaryCasing: '#DCD8D0',
-                roadMinor: '#FFFFFF',
-                roadMinorCasing: '#E4E0D8',
-                textPrimary: '#2C2C2E',
-                textSecondary: '#6C6C70',
-                textHalo: '#FFFFFF'
+                // Land & base
+                ocean: '#A8C8DC',
+                land: '#F0EDE8',
+                landuse: '#E8E5E0',
+                residential: '#EBE8E3',
+                
+                // Nature
+                park: '#C8DDB8',
+                forest: '#C0D4B0',
+                grass: '#D0E0C0',
+                sand: '#F4E8D8',
+                
+                // Water
+                water: '#A0C4DC',
+                waterway: '#A0C4DC',
+                
+                // Buildings
+                building: '#E0DCD6',
+                buildingLine: '#D0CCC6',
+                
+                // Roads - Apple uses very subtle grays
+                motorway: '#F9B233',
+                motorwayCasing: '#E09020',
+                trunk: '#F9C94E',
+                trunkCasing: '#E0A830',
+                primary: '#FFFFFF',
+                primaryCasing: '#D8D4CC',
+                secondary: '#FFFFFF',
+                secondaryCasing: '#E0DCD4',
+                minor: '#FFFFFF',
+                minorCasing: '#E8E4DC',
+                path: '#E8DDD0',
+                
+                // Labels
+                textCity: '#3C3C43',
+                textTown: '#48484A',
+                textVillage: '#8E8E93',
+                textRoad: '#8A8A8E',
+                halo: 'rgba(255,255,255,0.95)'
             },
             dark: {
-                background: '#18181A',
-                landuse: '#222224',
-                water: '#183040',
-                waterway: '#183040',
-                park: '#1A2E1A',
-                forest: '#162816',
-                sand: '#2E2820',
-                building: '#28282A',
-                buildingOutline: '#323234',
-                roadMotorway: '#A87D15',
-                roadMotorwayCasing: '#18181A',
-                roadPrimary: '#404042',
-                roadPrimaryCasing: '#18181A',
-                roadSecondary: '#353537',
-                roadSecondaryCasing: '#18181A',
-                roadMinor: '#2E2E30',
-                roadMinorCasing: '#18181A',
-                textPrimary: '#E5E5E7',
-                textSecondary: '#8E8E93',
-                textHalo: '#18181A'
+                // Land & base - Apple dark is very dark with slight warm tint
+                ocean: '#0A1418',
+                land: '#1D1D1F',
+                landuse: '#232325',
+                residential: '#202022',
+                
+                // Nature - very subtle
+                park: '#1A2818',
+                forest: '#141E12',
+                grass: '#1C2818',
+                sand: '#282418',
+                
+                // Water - deep blue
+                water: '#0C1820',
+                waterway: '#0C1820',
+                
+                // Buildings
+                building: '#2A2A2C',
+                buildingLine: '#363638',
+                
+                // Roads - muted warm grays
+                motorway: '#8C6810',
+                motorwayCasing: '#1D1D1F',
+                trunk: '#7C5C10',
+                trunkCasing: '#1D1D1F',
+                primary: '#404042',
+                primaryCasing: '#1D1D1F',
+                secondary: '#333335',
+                secondaryCasing: '#1D1D1F',
+                minor: '#2A2A2C',
+                minorCasing: '#1D1D1F',
+                path: '#252527',
+                
+                // Labels
+                textCity: '#F5F5F7',
+                textTown: '#E5E5E7',
+                textVillage: '#8E8E93',
+                textRoad: '#6E6E73',
+                halo: 'rgba(29,29,31,0.95)'
             }
         };
 
-        function getStyle(theme) {
-            const c = themes[theme];
+        function getStyle(t) {
+            const c = colors[t];
+            
+            const sources = {
+                kerala: { type: 'vector', tiles: [`${TILE_SERVER}/kerala/{z}/{x}/{y}`], maxzoom: 16 }
+            };
+            
+            if (terrainOn) {
+                sources.terrain = {
+                    type: 'raster-dem',
+                    tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+                    encoding: 'terrarium',
+                    tileSize: 256,
+                    maxzoom: 14
+                };
+            }
+            
+            const layers = [
+                // Ocean base
+                { id: 'ocean', type: 'background', paint: { 'background-color': c.ocean }},
+                
+                // Land
+                { id: 'land', type: 'fill', source: 'kerala', 'source-layer': 'landcover',
+                    paint: { 'fill-color': c.land }},
+                
+                { id: 'landuse-residential', type: 'fill', source: 'kerala', 'source-layer': 'landuse',
+                    filter: ['in', 'class', 'residential', 'suburb'],
+                    paint: { 'fill-color': c.residential, 'fill-opacity': 0.5 }},
+                
+                { id: 'landuse-other', type: 'fill', source: 'kerala', 'source-layer': 'landuse',
+                    filter: ['!in', 'class', 'residential', 'suburb'],
+                    paint: { 'fill-color': c.landuse, 'fill-opacity': 0.4 }},
+                
+                // Nature
+                { id: 'park', type: 'fill', source: 'kerala', 'source-layer': 'park',
+                    paint: { 'fill-color': c.park, 'fill-opacity': 0.5 }},
+                
+                { id: 'forest', type: 'fill', source: 'kerala', 'source-layer': 'landcover',
+                    filter: ['in', 'class', 'wood', 'forest'],
+                    paint: { 'fill-color': c.forest, 'fill-opacity': 0.7 }},
+                
+                { id: 'grass', type: 'fill', source: 'kerala', 'source-layer': 'landcover',
+                    filter: ['==', 'class', 'grass'],
+                    paint: { 'fill-color': c.grass, 'fill-opacity': 0.5 }},
+                
+                { id: 'sand', type: 'fill', source: 'kerala', 'source-layer': 'landcover',
+                    filter: ['==', 'class', 'sand'],
+                    paint: { 'fill-color': c.sand }},
+            ];
+            
+            // Hillshade
+            if (terrainOn) {
+                layers.push({
+                    id: 'hillshade', type: 'hillshade', source: 'terrain',
+                    paint: {
+                        'hillshade-exaggeration': t === 'light' ? 0.2 : 0.25,
+                        'hillshade-shadow-color': t === 'light' ? '#5C6670' : '#000000',
+                        'hillshade-highlight-color': t === 'light' ? '#FFFFFF' : '#2A2A2C',
+                        'hillshade-accent-color': t === 'light' ? '#8090A0' : '#1A1A1C'
+                    }
+                });
+            }
+            
+            // Water, buildings, roads
+            layers.push(
+                { id: 'water', type: 'fill', source: 'kerala', 'source-layer': 'water',
+                    paint: { 'fill-color': c.water, 'fill-antialias': true }},
+                
+                { id: 'waterway', type: 'line', source: 'kerala', 'source-layer': 'waterway',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': c.waterway, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 8, 0.5, 16, 5] }},
+                
+                // Buildings - very subtle
+                { id: 'building', type: 'fill', source: 'kerala', 'source-layer': 'building', minzoom: 14,
+                    paint: { 'fill-color': c.building, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.2, 16, 0.7] }},
+                
+                { id: 'building-line', type: 'line', source: 'kerala', 'source-layer': 'building', minzoom: 15,
+                    paint: { 'line-color': c.buildingLine, 'line-width': 0.3, 'line-opacity': 0.6 }},
+                
+                // Roads - Apple-style hierarchy
+                // Minor roads
+                { id: 'road-path', type: 'line', source: 'kerala', 'source-layer': 'transportation',
+                    filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'path', 'track']], minzoom: 14,
+                    layout: { 'line-cap': 'round' },
+                    paint: { 'line-color': c.path, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 14, 1, 18, 3], 'line-dasharray': [2, 1] }},
+                
+                { id: 'road-minor-case', type: 'line', source: 'kerala', 'source-layer': 'transportation',
+                    filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'minor', 'service']], minzoom: 13,
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': c.minorCasing, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 13, 2.5, 18, 18], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0, 14, 1] }},
+                
+                { id: 'road-minor', type: 'line', source: 'kerala', 'source-layer': 'transportation',
+                    filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'minor', 'service']], minzoom: 13,
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': c.minor, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 13, 1.2, 18, 14], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0, 14, 1] }},
+                
+                // Secondary
+                { id: 'road-secondary-case', type: 'line', source: 'kerala', 'source-layer': 'transportation',
+                    filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'secondary', 'tertiary']], minzoom: 10,
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': c.secondaryCasing, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 10, 2, 18, 24] }},
+                
+                { id: 'road-secondary', type: 'line', source: 'kerala', 'source-layer': 'transportation',
+                    filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'secondary', 'tertiary']], minzoom: 10,
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': c.secondary, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 10, 1, 18, 20] }},
+                
+                // Primary
+                { id: 'road-primary-case', type: 'line', source: 'kerala', 'source-layer': 'transportation',
+                    filter: ['all', ['==', '$type', 'LineString'], ['==', 'class', 'primary']], minzoom: 8,
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': c.primaryCasing, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 8, 1.5, 18, 28] }},
+                
+                { id: 'road-primary', type: 'line', source: 'kerala', 'source-layer': 'transportation',
+                    filter: ['all', ['==', '$type', 'LineString'], ['==', 'class', 'primary']], minzoom: 8,
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': c.primary, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 8, 0.8, 18, 24] }},
+                
+                // Trunk
+                { id: 'road-trunk-case', type: 'line', source: 'kerala', 'source-layer': 'transportation',
+                    filter: ['all', ['==', '$type', 'LineString'], ['==', 'class', 'trunk']], minzoom: 6,
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': c.trunkCasing, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 6, 1, 18, 30] }},
+                
+                { id: 'road-trunk', type: 'line', source: 'kerala', 'source-layer': 'transportation',
+                    filter: ['all', ['==', '$type', 'LineString'], ['==', 'class', 'trunk']], minzoom: 6,
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': c.trunk, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 6, 0.6, 18, 26] }},
+                
+                // Motorway
+                { id: 'road-motorway-case', type: 'line', source: 'kerala', 'source-layer': 'transportation',
+                    filter: ['all', ['==', '$type', 'LineString'], ['==', 'class', 'motorway']], minzoom: 5,
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': c.motorwayCasing, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 5, 1, 18, 32] }},
+                
+                { id: 'road-motorway', type: 'line', source: 'kerala', 'source-layer': 'transportation',
+                    filter: ['all', ['==', '$type', 'LineString'], ['==', 'class', 'motorway']], minzoom: 5,
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': c.motorway, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 5, 0.5, 18, 28] }},
+                
+                // Aeroway
+                { id: 'aeroway', type: 'line', source: 'kerala', 'source-layer': 'aeroway', minzoom: 11,
+                    paint: { 'line-color': t === 'light' ? '#C8C8CC' : '#404044', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2, 16, 16] }},
+                
+                // Labels - sparse, Apple-style hierarchy
+                { id: 'label-city', type: 'symbol', source: 'kerala', 'source-layer': 'place',
+                    filter: ['==', 'class', 'city'], minzoom: 4, maxzoom: 12,
+                    layout: { 
+                        'text-field': '{name}', 
+                        'text-font': ['Open Sans Bold'],
+                        'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 10, 18],
+                        'text-letter-spacing': 0.08,
+                        'text-max-width': 8
+                    },
+                    paint: { 'text-color': c.textCity, 'text-halo-color': c.halo, 'text-halo-width': 1.5, 'text-halo-blur': 0.5 }},
+                
+                { id: 'label-town', type: 'symbol', source: 'kerala', 'source-layer': 'place',
+                    filter: ['==', 'class', 'town'], minzoom: 7, maxzoom: 14,
+                    layout: { 
+                        'text-field': '{name}', 
+                        'text-font': ['Open Sans Semibold'],
+                        'text-size': ['interpolate', ['linear'], ['zoom'], 7, 10, 12, 14],
+                        'text-max-width': 7
+                    },
+                    paint: { 'text-color': c.textTown, 'text-halo-color': c.halo, 'text-halo-width': 1.2 }},
+                
+                { id: 'label-village', type: 'symbol', source: 'kerala', 'source-layer': 'place',
+                    filter: ['in', 'class', 'village', 'hamlet', 'suburb', 'neighbourhood'], minzoom: 12,
+                    layout: { 
+                        'text-field': '{name}', 
+                        'text-font': ['Open Sans Regular'],
+                        'text-size': ['interpolate', ['linear'], ['zoom'], 12, 10, 16, 12],
+                        'text-max-width': 6
+                    },
+                    paint: { 'text-color': c.textVillage, 'text-halo-color': c.halo, 'text-halo-width': 1 }},
+                
+                { id: 'label-road', type: 'symbol', source: 'kerala', 'source-layer': 'transportation_name',
+                    minzoom: 14,
+                    layout: { 
+                        'text-field': '{name}', 
+                        'text-font': ['Open Sans Regular'],
+                        'text-size': 10,
+                        'symbol-placement': 'line',
+                        'text-max-angle': 20
+                    },
+                    paint: { 'text-color': c.textRoad, 'text-halo-color': c.halo, 'text-halo-width': 1 }},
+                
+                { id: 'label-airport', type: 'symbol', source: 'kerala', 'source-layer': 'aerodrome_label',
+                    minzoom: 9,
+                    layout: { 
+                        'text-field': ['get', 'name:latin'], 
+                        'text-font': ['Open Sans Semibold'],
+                        'text-size': 11
+                    },
+                    paint: { 'text-color': t === 'light' ? '#0066CC' : '#4DA6FF', 'text-halo-color': c.halo, 'text-halo-width': 1.5 }},
+                
+                { id: 'label-peak', type: 'symbol', source: 'kerala', 'source-layer': 'mountain_peak',
+                    minzoom: 10,
+                    layout: { 
+                        'text-field': ['format', ['get', 'name:latin'], {}, '\n', {}, ['concat', ['to-string', ['round', ['get', 'ele']]], ' m'], { 'font-scale': 0.8 }],
+                        'text-font': ['Open Sans Regular'],
+                        'text-size': 10,
+                        'text-line-height': 1.3
+                    },
+                    paint: { 'text-color': t === 'light' ? '#7A5C40' : '#A08060', 'text-halo-color': c.halo, 'text-halo-width': 1 }},
+                
+                // POIs with icons
+                { id: 'poi-hospital', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
+                    filter: ['==', 'class', 'hospital'], minzoom: 13,
+                    layout: { 
+                        'icon-image': 'hospital_11', 'icon-size': 1,
+                        'text-field': ['step', ['zoom'], '', 14, ['get', 'name:latin']],
+                        'text-font': ['Open Sans Regular'], 'text-size': 10,
+                        'text-anchor': 'top', 'text-offset': [0, 0.6], 'text-optional': true
+                    },
+                    paint: { 'text-color': t === 'light' ? '#CC3333' : '#FF6B6B', 'text-halo-color': c.halo, 'text-halo-width': 1 }},
+                
+                { id: 'poi-school', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
+                    filter: ['in', 'class', 'school', 'college', 'university'], minzoom: 14,
+                    layout: { 
+                        'icon-image': 'school_11', 'icon-size': 1,
+                        'text-field': ['step', ['zoom'], '', 15, ['get', 'name:latin']],
+                        'text-font': ['Open Sans Regular'], 'text-size': 10,
+                        'text-anchor': 'top', 'text-offset': [0, 0.6], 'text-optional': true
+                    },
+                    paint: { 'text-color': t === 'light' ? '#5856D6' : '#A78BFA', 'text-halo-color': c.halo, 'text-halo-width': 1 }},
+                
+                { id: 'poi-worship', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
+                    filter: ['==', 'class', 'place_of_worship'], minzoom: 14,
+                    layout: { 
+                        'icon-image': 'place_of_worship_11', 'icon-size': 1,
+                        'text-field': ['step', ['zoom'], '', 15, ['get', 'name:latin']],
+                        'text-font': ['Open Sans Regular'], 'text-size': 10,
+                        'text-anchor': 'top', 'text-offset': [0, 0.6], 'text-optional': true
+                    },
+                    paint: { 'text-color': t === 'light' ? '#806020' : '#C0A040', 'text-halo-color': c.halo, 'text-halo-width': 1 }},
+                
+                { id: 'poi-lodging', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
+                    filter: ['in', 'class', 'lodging', 'hotel'], minzoom: 14,
+                    layout: { 
+                        'icon-image': 'lodging_11', 'icon-size': 1,
+                        'text-field': ['step', ['zoom'], '', 15, ['get', 'name:latin']],
+                        'text-font': ['Open Sans Regular'], 'text-size': 10,
+                        'text-anchor': 'top', 'text-offset': [0, 0.6], 'text-optional': true
+                    },
+                    paint: { 'text-color': t === 'light' ? '#007AFF' : '#5AC8FA', 'text-halo-color': c.halo, 'text-halo-width': 1 }},
+                
+                { id: 'poi-fuel', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
+                    filter: ['==', 'class', 'fuel'], minzoom: 14,
+                    layout: { 'icon-image': 'fuel_11', 'icon-size': 1 }},
+                
+                { id: 'poi-rail', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
+                    filter: ['==', 'class', 'railway'], minzoom: 12,
+                    layout: { 
+                        'icon-image': 'railway_11', 'icon-size': 1.2,
+                        'text-field': ['get', 'name:latin'],
+                        'text-font': ['Open Sans Semibold'], 'text-size': 11,
+                        'text-anchor': 'top', 'text-offset': [0, 0.8]
+                    },
+                    paint: { 'text-color': c.textCity, 'text-halo-color': c.halo, 'text-halo-width': 1.5 }},
+                
+                { id: 'poi-bus', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
+                    filter: ['==', 'class', 'bus_station'], minzoom: 13,
+                    layout: { 
+                        'icon-image': 'bus_11', 'icon-size': 1,
+                        'text-field': ['step', ['zoom'], '', 14, ['get', 'name:latin']],
+                        'text-font': ['Open Sans Regular'], 'text-size': 10,
+                        'text-anchor': 'top', 'text-offset': [0, 0.6], 'text-optional': true
+                    },
+                    paint: { 'text-color': c.textTown, 'text-halo-color': c.halo, 'text-halo-width': 1 }}
+            );
             
             return {
                 version: 8,
-                sources: {
-                    kerala: {
-                        type: 'vector',
-                        tiles: [`${TILE_SERVER}/kerala/{z}/{x}/{y}`],
-                        maxzoom: 14
-                    }
-                },
+                sources,
+                sprite: './sprite',
                 glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
-                layers: [
-                    { id: 'background', type: 'background', paint: { 'background-color': c.background }},
-                    
-                    { id: 'landuse', type: 'fill', source: 'kerala', 'source-layer': 'landuse',
-                        paint: { 'fill-color': c.landuse, 'fill-opacity': 0.7 }},
-                    
-                    { id: 'landcover-grass', type: 'fill', source: 'kerala', 'source-layer': 'landcover',
-                        filter: ['==', 'class', 'grass'],
-                        paint: { 'fill-color': c.park, 'fill-opacity': 0.5 }},
-                    
-                    { id: 'landcover-wood', type: 'fill', source: 'kerala', 'source-layer': 'landcover',
-                        filter: ['in', 'class', 'wood', 'forest'],
-                        paint: { 'fill-color': c.forest, 'fill-opacity': 0.6 }},
-                    
-                    { id: 'landcover-sand', type: 'fill', source: 'kerala', 'source-layer': 'landcover',
-                        filter: ['==', 'class', 'sand'],
-                        paint: { 'fill-color': c.sand }},
-                    
-                    { id: 'park', type: 'fill', source: 'kerala', 'source-layer': 'park',
-                        paint: { 'fill-color': c.park, 'fill-opacity': 0.5 }},
-                    
-                    { id: 'water', type: 'fill', source: 'kerala', 'source-layer': 'water',
-                        paint: { 'fill-color': c.water }},
-                    
-                    { id: 'waterway', type: 'line', source: 'kerala', 'source-layer': 'waterway',
-                        paint: { 'line-color': c.waterway, 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 14, 3] }},
-                    
-                    { id: 'building', type: 'fill', source: 'kerala', 'source-layer': 'building', minzoom: 13,
-                        paint: { 'fill-color': c.building, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.3, 16, 0.85] }},
-                    
-                    { id: 'building-outline', type: 'line', source: 'kerala', 'source-layer': 'building', minzoom: 14,
-                        paint: { 'line-color': c.buildingOutline, 'line-width': 0.5 }},
-                    
-                    // Road casings
-                    { id: 'road-minor-casing', type: 'line', source: 'kerala', 'source-layer': 'transportation',
-                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'minor', 'service', 'track']], minzoom: 12,
-                        layout: { 'line-cap': 'round', 'line-join': 'round' },
-                        paint: { 'line-color': c.roadMinorCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2.5, 18, 16] }},
-                    
-                    { id: 'road-secondary-casing', type: 'line', source: 'kerala', 'source-layer': 'transportation',
-                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'secondary', 'tertiary']], minzoom: 9,
-                        layout: { 'line-cap': 'round', 'line-join': 'round' },
-                        paint: { 'line-color': c.roadSecondaryCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 18, 22] }},
-                    
-                    { id: 'road-primary-casing', type: 'line', source: 'kerala', 'source-layer': 'transportation',
-                        filter: ['all', ['==', '$type', 'LineString'], ['==', 'class', 'primary']], minzoom: 7,
-                        layout: { 'line-cap': 'round', 'line-join': 'round' },
-                        paint: { 'line-color': c.roadPrimaryCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 2, 18, 26] }},
-                    
-                    { id: 'road-motorway-casing', type: 'line', source: 'kerala', 'source-layer': 'transportation',
-                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'motorway', 'trunk']], minzoom: 5,
-                        layout: { 'line-cap': 'round', 'line-join': 'round' },
-                        paint: { 'line-color': c.roadMotorwayCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.5, 18, 28] }},
-                    
-                    // Road fills
-                    { id: 'road-minor', type: 'line', source: 'kerala', 'source-layer': 'transportation',
-                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'minor', 'service', 'track']], minzoom: 12,
-                        layout: { 'line-cap': 'round', 'line-join': 'round' },
-                        paint: { 'line-color': c.roadMinor, 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1.2, 18, 12] }},
-                    
-                    { id: 'road-secondary', type: 'line', source: 'kerala', 'source-layer': 'transportation',
-                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'secondary', 'tertiary']], minzoom: 9,
-                        layout: { 'line-cap': 'round', 'line-join': 'round' },
-                        paint: { 'line-color': c.roadSecondary, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.2, 18, 18] }},
-                    
-                    { id: 'road-primary', type: 'line', source: 'kerala', 'source-layer': 'transportation',
-                        filter: ['all', ['==', '$type', 'LineString'], ['==', 'class', 'primary']], minzoom: 7,
-                        layout: { 'line-cap': 'round', 'line-join': 'round' },
-                        paint: { 'line-color': c.roadPrimary, 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1.2, 18, 22] }},
-                    
-                    { id: 'road-motorway', type: 'line', source: 'kerala', 'source-layer': 'transportation',
-                        filter: ['all', ['==', '$type', 'LineString'], ['in', 'class', 'motorway', 'trunk']], minzoom: 5,
-                        layout: { 'line-cap': 'round', 'line-join': 'round' },
-                        paint: { 'line-color': c.roadMotorway, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.8, 18, 24] }},
-                    
-                    // Aeroways
-                    { id: 'aeroway-runway', type: 'line', source: 'kerala', 'source-layer': 'aeroway',
-                        filter: ['==', 'class', 'runway'], minzoom: 11,
-                        paint: { 'line-color': theme === 'light' ? '#C0C0C0' : '#404042', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 3, 16, 18] }},
-                    
-                    // Labels
-                    { id: 'place-city', type: 'symbol', source: 'kerala', 'source-layer': 'place',
-                        filter: ['==', 'class', 'city'], minzoom: 5,
-                        layout: { 'text-field': '{name}', 'text-font': ['Open Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 5, 13, 12, 22],
-                            'text-transform': 'uppercase', 'text-letter-spacing': 0.08 },
-                        paint: { 'text-color': c.textPrimary, 'text-halo-color': c.textHalo, 'text-halo-width': 1.5 }},
-                    
-                    { id: 'place-town', type: 'symbol', source: 'kerala', 'source-layer': 'place',
-                        filter: ['==', 'class', 'town'], minzoom: 8,
-                        layout: { 'text-field': '{name}', 'text-font': ['Open Sans Semibold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 11, 14, 16] },
-                        paint: { 'text-color': c.textPrimary, 'text-halo-color': c.textHalo, 'text-halo-width': 1.2 }},
-                    
-                    { id: 'place-village', type: 'symbol', source: 'kerala', 'source-layer': 'place',
-                        filter: ['in', 'class', 'village', 'hamlet', 'suburb', 'neighbourhood'], minzoom: 11,
-                        layout: { 'text-field': '{name}', 'text-font': ['Open Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 10, 16, 13] },
-                        paint: { 'text-color': c.textSecondary, 'text-halo-color': c.textHalo, 'text-halo-width': 1 }},
-                    
-                    { id: 'road-label', type: 'symbol', source: 'kerala', 'source-layer': 'transportation_name', minzoom: 13,
-                        layout: { 'text-field': '{name}', 'text-font': ['Open Sans Regular'], 'text-size': 10, 'symbol-placement': 'line', 'text-max-angle': 25 },
-                        paint: { 'text-color': c.textSecondary, 'text-halo-color': c.textHalo, 'text-halo-width': 1.2 }},
-                    
-                    { id: 'aerodrome-label', type: 'symbol', source: 'kerala', 'source-layer': 'aerodrome_label', minzoom: 10,
-                        layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Open Sans Semibold'], 'text-size': 11 },
-                        paint: { 'text-color': theme === 'light' ? '#0066CC' : '#5AC8FA', 'text-halo-color': c.textHalo, 'text-halo-width': 1.5 }},
-                    
-                    { id: 'mountain-peak', type: 'symbol', source: 'kerala', 'source-layer': 'mountain_peak', minzoom: 11,
-                        layout: { 'text-field': ['concat', ['get', 'name:latin'], '\n', ['to-string', ['get', 'ele']], ' m'], 'text-font': ['Open Sans Regular'], 'text-size': 10 },
-                        paint: { 'text-color': theme === 'light' ? '#7A5230' : '#B8956E', 'text-halo-color': c.textHalo, 'text-halo-width': 1 }},
-                    
-                    { id: 'poi-hospital', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
-                        filter: ['==', 'class', 'hospital'], minzoom: 13,
-                        layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Open Sans Regular'], 'text-size': 10, 'text-anchor': 'left', 'text-offset': [0.3, 0] },
-                        paint: { 'text-color': theme === 'light' ? '#CC3333' : '#FF6B6B', 'text-halo-color': c.textHalo, 'text-halo-width': 1 }},
-                    
-                    { id: 'poi-school', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
-                        filter: ['in', 'class', 'school', 'college', 'university'], minzoom: 14,
-                        layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Open Sans Regular'], 'text-size': 10 },
-                        paint: { 'text-color': theme === 'light' ? '#5856D6' : '#AF52DE', 'text-halo-color': c.textHalo, 'text-halo-width': 1 }},
-                    
-                    { id: 'poi-worship', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
-                        filter: ['==', 'class', 'place_of_worship'], minzoom: 14,
-                        layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Open Sans Regular'], 'text-size': 10 },
-                        paint: { 'text-color': theme === 'light' ? '#8B6914' : '#C9A227', 'text-halo-color': c.textHalo, 'text-halo-width': 1 }},
-                    
-                    { id: 'poi-lodging', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
-                        filter: ['in', 'class', 'lodging', 'hotel'], minzoom: 14,
-                        layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Open Sans Regular'], 'text-size': 10 },
-                        paint: { 'text-color': theme === 'light' ? '#007AFF' : '#5AC8FA', 'text-halo-color': c.textHalo, 'text-halo-width': 1 }},
-                    
-                    { id: 'poi-transport', type: 'symbol', source: 'kerala', 'source-layer': 'poi',
-                        filter: ['in', 'class', 'bus_station', 'railway'], minzoom: 12,
-                        layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Open Sans Semibold'], 'text-size': 11 },
-                        paint: { 'text-color': c.textPrimary, 'text-halo-color': c.textHalo, 'text-halo-width': 1.5 }}
-                ]
+                terrain: terrainOn ? { source: 'terrain', exaggeration: 1.3 } : undefined,
+                layers
             };
         }
 
-        function setTheme(theme) {
-            currentTheme = theme;
-            document.body.classList.toggle('dark', theme === 'dark');
-            
-            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            if (map) {
-                const center = map.getCenter();
-                const zoom = map.getZoom();
-                map.setStyle(getStyle(theme));
-                map.once('styledata', () => { map.setCenter(center); map.setZoom(zoom); });
-            }
+        function applyTheme() {
+            const t = theme;
+            document.querySelectorAll('.float-btn, .loc-btn, .search-pill, .search-input, .quick-places, .place-item, .place-icon, .place-name, .place-sub, .location-stack, .loc-divider, .attribution, .scale-bar')
+                .forEach(el => {
+                    el.classList.remove('light', 'dark');
+                    el.classList.add(t);
+                });
+            document.getElementById('theme-icon').textContent = t === 'dark' ? '☀' : '☾';
+            document.body.style.background = t === 'dark' ? '#000' : '#F2F2F7';
         }
 
-        function flyTo(coords, zoom) {
-            map.flyTo({ center: coords, zoom: zoom, duration: 1800 });
+        function toggleTheme() {
+            theme = theme === 'dark' ? 'light' : 'dark';
+            applyTheme();
+            refreshMap();
         }
-
-        function updateInfo() {
+        
+        function toggleTerrain() {
+            terrainOn = !terrainOn;
+            document.getElementById('terrain-icon').textContent = terrainOn ? '◼' : '▲';
+            document.getElementById('terrain-toggle').style.background = terrainOn ? (theme === 'dark' ? '#0A84FF' : '#007AFF') : '';
+            refreshMap();
+        }
+        
+        function refreshMap() {
             if (!map) return;
-            const center = map.getCenter();
-            document.getElementById('zoom').textContent = map.getZoom().toFixed(1);
-            document.getElementById('center').textContent = `${center.lat.toFixed(2)}, ${center.lng.toFixed(2)}`;
+            const s = { center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() };
+            map.setStyle(getStyle(theme));
+            map.once('styledata', () => { map.jumpTo(s); });
+        }
+        
+        function showPlaces() { document.getElementById('quick-places').classList.add('show'); }
+        function hidePlaces() { document.getElementById('quick-places').classList.remove('show'); }
+        
+        function goTo(coords, zoom, name) {
+            document.getElementById('search-input').value = name;
+            hidePlaces();
+            map.flyTo({ center: coords, zoom, duration: 1800, pitch: terrainOn ? 50 : 0 });
+        }
+        
+        function zoomIn() { map.zoomIn({ duration: 300 }); }
+        function zoomOut() { map.zoomOut({ duration: 300 }); }
+        
+        function updateScale() {
+            if (!map) return;
+            const y = map.getCenter().lat;
+            const zoom = map.getZoom();
+            // meters per pixel at this latitude and zoom
+            const mpp = 156543.03392 * Math.cos(y * Math.PI / 180) / Math.pow(2, zoom);
+            
+            // find a nice round number
+            const targetWidth = 80; // pixels
+            const meters = mpp * targetWidth;
+            
+            let distance, unit, width;
+            if (meters >= 1000) {
+                const km = meters / 1000;
+                const nice = [1, 2, 5, 10, 20, 50, 100, 200, 500];
+                distance = nice.find(n => n >= km) || 500;
+                unit = 'km';
+                width = (distance * 1000) / mpp;
+            } else {
+                const nice = [10, 20, 50, 100, 200, 500, 1000];
+                distance = nice.find(n => n >= meters) || 1000;
+                unit = 'm';
+                width = distance / mpp;
+            }
+            
+            document.getElementById('scale-line').style.width = Math.min(width, 150) + 'px';
+            document.getElementById('scale-text').textContent = distance + ' ' + unit;
         }
 
         map = new maplibregl.Map({
@@ -455,15 +771,16 @@
             style: getStyle('dark'),
             center: [76.2711, 10.8505],
             zoom: 8,
-            maxBounds: [[73.5, 7.0], [80.5, 15.0]]
+            maxBounds: [[73.5, 7.0], [80.5, 15.0]],
+            maxPitch: 70,
+            dragRotate: true,
+            touchPitch: true
         });
-
-        map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-        map.addControl(new maplibregl.ScaleControl({ maxWidth: 80, unit: 'metric' }), 'bottom-left');
-        map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-
-        map.on('move', updateInfo);
-        map.on('load', updateInfo);
+        
+        map.on('zoom', updateScale);
+        map.on('load', updateScale);
+        
+        applyTheme();
     </script>
 </body>
 </html>

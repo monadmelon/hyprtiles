@@ -1,24 +1,45 @@
 {
-  "layers": {
-    "water": { "minzoom": 0, "maxzoom": 14 },
-    "waterway": { "minzoom": 8, "maxzoom": 14 },
-    "landcover": { "minzoom": 7, "maxzoom": 14 },
-    "landuse": { "minzoom": 10, "maxzoom": 14 },
-    "park": { "minzoom": 10, "maxzoom": 14 },
-    "transportation": { "minzoom": 5, "maxzoom": 14 },
-    "building": { "minzoom": 13, "maxzoom": 14 },
-    "place": { "minzoom": 3, "maxzoom": 14 },
-    "poi": { "minzoom": 13, "maxzoom": 14 }
-  },
-  "settings": {
-    "minzoom": 0,
-    "maxzoom": 14,
-    "basezoom": 14,
-    "include_ids": false,
-    "compress": "gzip",
-    "name": "HyprTiles Varkala",
-    "version": "1.0",
-    "description": "Vector tiles for Varkala region",
-    "attribution": "© OpenStreetMap contributors"
-  }
+    "layers": {
+        "place": { "minzoom": 0, "maxzoom": 16 },
+        "boundary": { "minzoom": 0, "maxzoom": 16 },
+        "poi": { "minzoom": 12, "maxzoom": 16 },
+        "poi_detail": { "minzoom": 14, "maxzoom": 16, "write_to": "poi" },
+        "housenumber": { "minzoom": 14, "maxzoom": 16 },
+        "waterway": { "minzoom": 8, "maxzoom": 16 },
+        "waterway_detail": { "minzoom": 12, "maxzoom": 16, "write_to": "waterway" },
+        "transportation": { "minzoom": 4, "maxzoom": 16, "simplify_below": 13, "simplify_level": 0.0003 },
+        "transportation_name": { "minzoom": 8, "maxzoom": 16 },
+        "transportation_name_mid": { "minzoom": 12, "maxzoom": 16, "write_to": "transportation_name" },
+        "transportation_name_detail": { "minzoom": 14, "maxzoom": 16, "write_to": "transportation_name" },
+        "building": { "minzoom": 13, "maxzoom": 16 },
+        "water": { "minzoom": 4, "maxzoom": 16, "simplify_below": 13, "simplify_level": 0.0003 },
+        "ocean": { "minzoom": 0, "maxzoom": 16, "write_to": "water" },
+        "water_name": { "minzoom": 14, "maxzoom": 16 },
+        "water_name_detail": { "minzoom": 14, "maxzoom": 16, "write_to": "water_name" },
+        "aeroway": { "minzoom": 11, "maxzoom": 16 },
+        "aerodrome_label": { "minzoom": 10, "maxzoom": 16 },
+        "park": { "minzoom": 8, "maxzoom": 16, "simplify_below": 13, "simplify_level": 0.0003 },
+        "landuse": { "minzoom": 4, "maxzoom": 16, "simplify_below": 13, "simplify_level": 0.0003 },
+        "urban_areas": { "minzoom": 4, "maxzoom": 8, "write_to": "landuse" },
+        "landcover": { "minzoom": 0, "maxzoom": 16, "simplify_below": 10, "simplify_level": 0.0004 },
+        "ice_shelf": { "minzoom": 0, "maxzoom": 9, "write_to": "landcover" },
+        "glacier": { "minzoom": 2, "maxzoom": 9, "write_to": "landcover" },
+        "mountain_peak": { "minzoom": 11, "maxzoom": 16 }
+    },
+    "settings": {
+        "minzoom": 0,
+        "maxzoom": 16,
+        "basezoom": 16,
+        "include_ids": false,
+        "combine_below": 14,
+        "name": "Kerala Vector Tiles",
+        "version": "1.0",
+        "description": "Custom Kerala tiles for HyprTiles",
+        "compress": "gzip",
+        "mvt_version": 2,
+        "metadata": {
+            "attribution": "OpenStreetMap contributors",
+            "type": "baselayer"
+        }
+    }
 }
